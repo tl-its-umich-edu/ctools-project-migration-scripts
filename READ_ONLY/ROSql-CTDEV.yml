@@ -1,0 +1,78 @@
+# Configuration file for generating SQL to REMOVE/RESTORE permissions from
+# specific sites / roles.  The set of permissions to be removed
+# is the same for all sites and roles.
+# SQL has only been tested on Oracle.
+# From JIRA 511
+# For following roles: owner, organizer, member, observer
+# Eliminate the following permissions:
+# annc.delete.any, annc.delete.own, annc.new, annc.revise.any,  annc.revise.own,
+# calendar.delete.any, calendar.delete.own, calendar.import, calendar.new,
+# calendar.revise.any, calendar.revise.own, chat.delete.any, chat.delete.channel,
+# chat.delete.own,  chat.new, chat.new.channel, content.delete.any,
+# content.delete.own, content.new, content.revise.any, content.revise.own,
+# mail.delete.any, mail.new
+
+#########
+# This is the table prefix for the SQL queries
+db_user: CTDEV_USER
+
+########## Values beyond here are unlikely to change. #########
+# Put in a line break for comma separated lists in IN clause every this many entries.
+comma_break_rate: 5
+
+# Maximum number of realms to add to each query.
+realms_max: 20
+
+# Name of role / function archive table.
+#ARCHIVE_ROLE_FUNCTION_TABLE: sakai_realm_rl_fn_<YYYYMMDD>
+
+# These roles will have the permissions removed in all listed sites.
+roles:
+    - Member
+    - Observer
+    - Organizer
+    - Owner
+    - Affiliate 
+    - Assistant 
+    - Instructor 
+    - Librarian 
+    - Student 
+    - access 
+    - maintain
+
+# These functions will be REMOVED from requested roles in requested sites.
+functions:
+    - annc.delete.any
+    - annc.delete.own
+    - annc.new
+    - annc.revise.any
+    - annc.revise.own
+    - calendar.delete.any
+    - calendar.delete.own
+    - calendar.import
+    - calendar.new
+    - calendar.revise.any
+    - calendar.revise.own
+    - chat.delete.any
+    - chat.delete.channel
+    - chat.delete.own
+    - chat.new
+    - chat.new.channel
+    - content.delete.any
+    - content.delete.own
+    - content.hidden
+    - content.new
+    - content.revise.any
+    - content.revise.own
+    - content.all.groups
+    - dropbox.maintain
+    - mail.delete.any
+    - mail.new
+    - realm.del
+    - realm.upd
+    - realm.upd.own
+    - site.upd
+    - site.upd.site.mbrshp
+    - site.upd.grp.mbrshp
+
+#end
