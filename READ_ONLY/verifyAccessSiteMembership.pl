@@ -82,6 +82,7 @@ sub getMembers {
 sub missingEidMessage {
   my ($eid) = @_;
 
+  # should add trailing ;
   my $deleteMembership = "sql:\tdelete from ${DB_USER}.SAKAI_REALM_RL_GR where user_id in ( select user_id from ${DB_USER}.SAKAI_USER_ID_MAP where eid = '$eid'  )";
   return $deleteMembership;
 }
