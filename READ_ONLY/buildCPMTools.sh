@@ -37,7 +37,7 @@ function build_tar {
     cp README.html ${BUILD_DIR}
     cp *packed ${BUILD_DIR}
     
-    chmod +x *packed *.sh
+    chmod +x ${BUILD_DIR}/*packed ${BUILD_DIR}/*.sh
     
     TAR_OUT=${TAR_DIR}/CPMTools.${TS}.tar
     echo "+++ Created ${TAR_OUT} for CPM site migration."
