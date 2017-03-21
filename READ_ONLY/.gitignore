@@ -1,0 +1,10 @@
+fatlib
+*packed
+# don't allow checking in sensitive information.
+credentials*.yml
+LOGS
+vagrant
+TEST
+TEST2
+ATTIC
+PRIOR
