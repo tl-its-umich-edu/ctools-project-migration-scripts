@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use YAML qw'LoadFile';
 use POSIX qw(strftime);
+use Data::Dumper;
 
 ## REFACTOR sql generation to separate out the site list and key generation.
 ## ALSO allow update action log as action.
@@ -23,6 +24,9 @@ use strict;
 
 # Run this using the runBatchRO.sh shell script to deal with arguments and file naming.
 
+# NOTE: syntax to rename a table
+# rename SAKAI_REALM_RL_FN_20161215 to SAKAI_REALM_RL_FN_20161215_A
+
 ################
 ## global configuration values read from the configuration yml file.  See below for
 ## purpose.
@@ -33,11 +37,17 @@ our @functions;
 our @roles;
 # list of sites to exclude.
 our @excludedSites;
+# list of sites to restore.
+our @restoreSites;
 # list of site types to examine
 our @readonlySiteTypes;
 # name of the archive table, which may change over time.
 our $ARCHIVE_ROLE_FUNCTION_TABLE;
+# name of action log which may change for testing.
+our $ACTION_LOG_TABLE;
 ################
+
+#our $ACTION_LOG_TABLE="CPM_ACTION_LOG";
 
 # Read the requested task from the command line.  Wrapper shell script will default it if necessary.
 our $task = shift;
@@ -48,6 +58,11 @@ our ($yml_file) = shift || "./ROSqlSite.yml";
 # read in configuration file and set values
 sub configure {
   my ($db,$functions,$sites) = LoadFile($yml_file);
+
+  # for debugging if required.
+#  print "db: \n";
+#  print Dumper($db);
+  
   # prefix for sql tables.
   $DB_USER=$db->{db_user};
  
@@ -63,15 +78,30 @@ sub configure {
   # roles to examine.
   @roles=@{$db->{roles}};
 
+#  print("db: 0\n");
+#  print Dumper($db);
+  
   # sites to exclude
   @excludedSites=@{$db->{excludedSites}};
 
+    # sites to exclude
+  @restoreSites=@{$db->{restoreSites}};
+
+#  print("restoreSites: 0\n");
+#  print Dumper(@restoreSites);
+  
   # site types to include
   @readonlySiteTypes=@{$db->{siteTypes}};
   
   # archive table name
   $ARCHIVE_ROLE_FUNCTION_TABLE=$db->{ARCHIVE_ROLE_FUNCTION_TABLE};
 
+  # action log name
+  $ACTION_LOG_TABLE=$db->{ACTION_LOG_TABLE};
+  unless($ACTION_LOG_TABLE) {
+    $ACTION_LOG_TABLE="CPM_ACTION_LOG";
+  };
+  
   # setup the task to be done.
   setupTask($task);
 }
@@ -94,7 +124,8 @@ our($CURRENT_ROLE_FUNCTION_TABLE) = "sakai_realm_rl_fn";
 sub setupTask {
   my $task = shift;
 
-  if (!$ARCHIVE_ROLE_FUNCTION_TABLE && ($task eq "READ_ONLY_RESTORE" || $task eq "READ_ONLY_RESTORE_LIST")) {
+  if (!$ARCHIVE_ROLE_FUNCTION_TABLE && ($task eq "READ_ONLY_RESTORE"
+                                        || $task eq "READ_ONLY_RESTORE_LIST")) {
     die(">>>>> For restore actions must specify value for ARCHIVE_ROLE_FUNCTION_TABLE in yml file.");
   }
 
@@ -102,15 +133,40 @@ sub setupTask {
   die (">>>>> INVALID TASK: [$task]") unless ($task eq "READ_ONLY_UPDATE"
                                               || $task eq "READ_ONLY_LIST"
                                               || $task eq "READ_ONLY_RESTORE"
-                                              || $task eq "READ_ONLY_RESTORE_LIST");
+                                              || $task eq "READ_ONLY_RESTORE_LIST"
+                                              || $task eq "ACTION_LOG_UPDATE"
+                                              || $task eq "ACTION_LOG_LIST"
+                                              || $task eq "ACTION_LOG_COUNT"
+                                             );
 
   #########
+
+  ## update the action log.
+#  see update_action_log.sql file for format.
+  if ($task =~ "ACTION_LOG_UPDATE") {
+    ($sqlAction,$READ_TABLE)
+      = ("INSERT INTO ${DB_USER}.${ACTION_LOG_TABLE}\n ",$ACTION_LOG_TABLE);
+#      = ("INSERT INTO ${DB_USER}.${ACTION_LOG_TABLE}\n\tSELECT * ",$ACTION_LOG_TABLE);
+  }
+
+  if ($task =~ "ACTION_LOG_LIST") {
+    ($sqlAction,$READ_TABLE)
+      = ("SELECT * FROM (\n",$ACTION_LOG_TABLE);
+  }
+
+  if ($task =~ "ACTION_LOG_COUNT") {
+    ($sqlAction,$READ_TABLE)
+      = ("SELECT count(*) FROM (\n",$ACTION_LOG_TABLE);
+  }
+  
   ## work with removing permissions.  Will use the current role function table.
   # take permissions out of role function table to make site read only
   if ($task eq "READ_ONLY_UPDATE") {
     ($sqlAction,$READ_TABLE)
       = ("DELETE ",$CURRENT_ROLE_FUNCTION_TABLE);
   }
+
+  
   # list what would be removed from the table
   if ($task eq "READ_ONLY_LIST") {
     ($sqlAction,$READ_TABLE)
@@ -139,7 +195,8 @@ sub setupTask {
 sub writeActionLog {
   my($task,$siteId) = @_;
   print "/****** update log table *******/\n";
-  print "insert into ${DB_USER}.CPM_ACTION_LOG VALUES(CURRENT_TIMESTAMP,'${siteId}','$task');\n";
+  print "insert into ${DB_USER}.${ACTION_LOG_TABLE} VALUES(CURRENT_TIMESTAMP,'${siteId}','$task');\n";
+  # print "insert into ${DB_USER}.CPM_ACTION_LOG VALUES(CURRENT_TIMESTAMP,'${siteId}','$task');\n";
 }
 
 # sql to make an archive function table.
@@ -195,47 +252,69 @@ sub unionListSites {
 sub buildSql {
 #  my @realmIds = @_;
 
-  # key
+#  print("restoreSites: A \n");
+#  print Dumper(@restoreSites);
+  
   my $roles_as_sql = commaList(@roles);
   my $role_keys = role_keys_sql($roles_as_sql);
 
-  # key
   my $functions_as_sql = commaList(@functions);
   my $function_keys = function_keys_sql($functions_as_sql);
 
+  #print("restoreSites: B \n");
+#  print Dumper(@restoreSites);
   my $excluded_sites_as_sql = unionListSites(@excludedSites);
   my $excluded_sites = excluded_sites_sql($excluded_sites_as_sql);
 
+  #print("restoreSites: C \n");
+#  print Dumper(@restoreSites);
   my $site_realm_keys = site_realm_key_sql();
   
   # types
   my $candidate_site_as_sql = commaList(@readonlySiteTypes);
   my $candidate_sites = candidate_site_sql($candidate_site_as_sql);
-
+ # print("restoreSites: D\n");
+#  print Dumper(@restoreSites);
   my $target_sites = target_site_id_sql();
 
-  my $prefix = prefix_sql();
-  my $suffix = suffix_sql();
+#  print("restoreSites: \n");
+#  print Dumper(@restoreSites);
+  my $target_sites_explicit_as_sql = unionListSites(@restoreSites);
+  my $target_sites_explicit = target_site_id_explicit_sql($target_sites_explicit_as_sql);
+
+  my $prefix = prefix_sql($task);
+  my $suffix = suffix_sql($task);
 
   print "\n";
   #  printComment("update permissions");
   print "${prefix}\n";
 
   # sql to generate sites to target.
-  print "${excluded_sites},\n";
-  print "${candidate_sites},\n";
-  print "${target_sites},\n";
+  if ($task !~ m|_RESTORE|) {
+    print "${excluded_sites},\n";
+    print "${candidate_sites},\n";
+    print "${target_sites}\n";
+  }
+  
+  if ($task =~ m|_RESTORE|) {
+    print "${target_sites_explicit}\n";
+  }
+
 
   # sql to generate the internal role, function, and realm keys
-  print "${role_keys},\n";
-  print "${function_keys},\n";
-  print "${site_realm_keys}\n";
+  if ($task !~ m|ACTION_LOG|) {
+    print ",\n"; # if adding the keys then need a comma separator.
+    print "${role_keys},\n";
+    print "${function_keys},\n";
+    print "${site_realm_keys}\n";
+  }
   
   print "${suffix}\n";
-  print ")\n";
+  if ($task eq "ACTION_LOG_LIST" || $task eq "ACTION_LOG_COUNT" || $task eq "ACTION_LOG_UPDATE.XXX" ) {
+    print ")\n";
+  }
   print ";\n";
 
-  print "-- ADD ACTION LOG SQL";
 }
 
 ############# functions to return parts of the required sql.
@@ -254,14 +333,92 @@ sub formatSiteId {
 
 # sql for the start of query.
 sub prefix_sql {
-  printComment("take action");
+  # there might not be an action.
+  my $task = shift;
+  printComment("prefix_sql: task: [$task]");
+
+  if ($task eq "READ_ONLY_LIST") {
+    return prefix_SQL_READ_ONLY_LIST();
+  }
+
+    if ($task eq "ACTION_LOG_UPDATE") {
+    return prefix_SQL_ACTION_LOG_UPDATE();
+  }
+
+    if ($task eq "ACTION_LOG_LIST") {
+    return prefix_SQL_ACTION_LOG_LIST();
+  }
+
+  if ($task eq "ACTION_LOG_COUNT") {
+    return prefix_SQL_ACTION_LOG_COUNT();
+  }
+
+  if ($task eq "READ_ONLY_RESTORE") {
+    return prefix_SQL_READ_ONLY_RESTORE();
+  }
+
+  my $USE_TABLE=$ARCHIVE_ROLE_FUNCTION_TABLE;
+
+  if ($task eq "READ_ONLY_UPDATE") {
+    $USE_TABLE=$CURRENT_ROLE_FUNCTION_TABLE;
+  }
+
+    
+#     FROM   ${DB_USER}.${ARCHIVE_ROLE_FUNCTION_TABLE} SRRF
   my $sql = <<"PREFIX_SQL";
    ${sqlAction}
-   FROM   ${DB_USER}.${READ_TABLE} SRRF
-   WHERE  EXISTS (
-   WITH 
+   FROM   ${DB_USER}.${USE_TABLE} SRRF
+   WHERE  EXISTS 
+       ( SELECT 1
+         FROM
+           ( WITH 
 PREFIX_SQL
   $sql
+}
+
+# # sql for the start of query.
+# sub prefix_sql_old {
+#   printComment("take action");
+#   my $sql = <<"PREFIX_SQL";
+#    ${sqlAction}
+#    FROM   ${DB_USER}.${READ_TABLE} SRRF
+#    WHERE  EXISTS (
+#    WITH 
+# PREFIX_SQL
+#   $sql
+# }
+
+
+sub prefix_SQL_READ_ONLY_LIST {
+  printComment("take action read only list");
+  "WITH ";
+}
+
+sub prefix_SQL_ACTION_LOG_UPDATE {
+  printComment("take action: action log update");
+  "INSERT INTO ${DB_USER}.${ACTION_LOG_TABLE}(ACTION_TIME,SITE_ID,ACTION_TAKEN) \nWITH";
+  # "INSERT INTO ${DB_USER}.CPM_ACTION_LOG_TEST(ACTION_TIME,SITE_ID,ACTION_TAKEN) \nWITH";
+#  "WITH ";
+}
+
+sub prefix_SQL_ACTION_LOG_LIST {
+  printComment("take action: action log list");
+  "select *   FROM ( \nWITH";
+}
+
+sub prefix_SQL_ACTION_LOG_COUNT {
+  printComment("take action: action log count");
+  "select count(*)   FROM ( \nWITH";
+}
+
+sub prefix_SQL_READ_ONLY_RESTORE {
+  printComment("take action: read only restore");
+   "INSERT INTO ${DB_USER}.sakai_realm_rl_fn 
+   SELECT * 
+   FROM   ${DB_USER}.${ARCHIVE_ROLE_FUNCTION_TABLE} SRRF 
+   WHERE  EXISTS (
+          SELECT 1 FROM (
+           WITH ";
 }
 
 # return the sql for the role keys sub-table
@@ -314,7 +471,7 @@ CANDIDATE_SITE_SQL
 sub excluded_sites_sql {
   my $excluded_sites_as_sql = shift;
   my $sql = <<"REALM_KEY_SQL";
-    excluded_site_id 
+     excluded_site_id 
        AS (
        $excluded_sites_as_sql
   )
@@ -327,7 +484,7 @@ sub site_realm_key_sql {
   my $site_realm_key_sql = shift;
   my $sql = << "SITE_REALM_KEY_SQL";
      site_realm_key 
-     AS(
+       AS(
          SELECT ${DB_USER}.sakai_realm.realm_key
          FROM ${DB_USER}.sakai_realm,target_site_id
          WHERE ${DB_USER}.sakai_realm.realm_id LIKE '%'||target_site_id.site_id||'%'
@@ -346,8 +503,8 @@ REALM_KEY_SQL
 
 sub target_site_id_sql{
   my $sql = << "TARGET_SITE_ID_SQL";
-   target_site_id
-        AS (
+     target_site_id
+       AS (
           SELECT candidate_site_id.site_id FROM candidate_site_id
           LEFT OUTER JOIN excluded_site_id
           ON candidate_site_id.site_id = excluded_site_id.site_id
@@ -356,6 +513,25 @@ sub target_site_id_sql{
 TARGET_SITE_ID_SQL
  $sql
 }
+
+sub target_site_id_explicit_sql{
+    my $sites_sql = shift;
+  my $sql = << "TARGET_SITE_ID_EXPLICIT_SQL";
+     target_site_id
+       AS (
+           ${sites_sql}
+           )           
+TARGET_SITE_ID_EXPLICIT_SQL
+ $sql
+}
+
+# sub target_sites_id_explicit_sql{
+#   my $sites_sql = shift;
+#   return "     target_site_id
+#        AS (
+# ${sites_sql}
+# )";
+# }
 
 # sub site_realm_key_sql{
 #   my $sql = <<"SITE_REALM_KEY_SQL";
@@ -373,6 +549,31 @@ TARGET_SITE_ID_SQL
 # sql that uses the sub-tables to generate list of grants matching the
 # role, function, realm criteria
 sub suffix_sql {
+  my $task = shift;
+  my $UPDATE_DELIMITER="";
+  # there might not be an action.
+
+  printComment("suffix_sql task: [$task]");
+
+  if ($task eq "READ_ONLY_LIST") {
+    return " select * from target_site_id ";
+  }
+
+  # if ($task eq "ACTION_LOG_UPDATE") {
+  #   print("found task ACTION_LOG_UPDATE\n");
+  #   $task = "READ_ONLY_UPDATE";
+  # }
+  
+  if ($task =~ /ACTION_LOG_.*/i) {
+     $task = "READ_ONLY_UPDATE" if ($task eq "ACTION_LOG_UPDATE");
+#    print("matched ACTION_LOG\n");
+      return "select CURRENT_TIMESTAMP AS ACTION_TIME, SITE_ID AS SITE_ID, '${task}' AS ACTION_TAKEN from dual,target_site_id ";
+  }
+
+  if ($task eq "READ_ONLY_UPDATE") {
+    $UPDATE_DELIMITER="    )";
+  }
+  
   my $sql = <<"SUFFIX_SQL";
 
    -- list grant rows to act on.
@@ -382,7 +583,14 @@ sub suffix_sql {
           WHERE  SRRF_2.role_key = role_keys.role_key
              AND SRRF_2.function_key = function_keys.function_key
              AND SRRF_2.realm_key =  site_realm_key.realm_key
-
+     -- name the table generate by the WITH
+     ) SELECTED_KEYS
+     -- now select the rows to delete
+  WHERE SRRF.role_key = SELECTED_KEYS.role_key
+    AND SRRF.realm_key = SELECTED_KEYS.realm_key
+    AND SRRF.function_key = SELECTED_KEYS.function_key
+ -- end exists
+)
 SUFFIX_SQL
   $sql
 }
