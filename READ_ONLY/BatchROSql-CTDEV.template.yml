@@ -20,10 +20,11 @@ db_user: CTDEV_USER
 ########## These next 3 values are unlikely to change. #########
 # Put in a line break for comma separated lists in IN clause every this many entries.
 comma_break_rate: 5
-# Maximum number of realms to add to each query.
+# Maximum number of realms to add to each query (obsolete)
 realms_max: 20
-# Table used for logging actions.  Unlikely to change except when testing.
+# Table used for logging actions taken.  Unlikely to change except when testing.
 ACTION_LOG_TABLE: cpm_action_log_test
+##########
 
 
 #################################################
@@ -33,6 +34,7 @@ ACTION_LOG_TABLE: cpm_action_log_test
 # The table name format is 'sakai_realm_rl_fn_' with the date of table creation
 # appended.  SQL to generate the backup table is created automatically along with the
 # read only sql.
+
 ARCHIVE_ROLE_FUNCTION_TABLE: sakai_realm_rl_fn_20180529
 
 
@@ -94,29 +96,36 @@ functions:
     - site.upd.site.mbrshp
     - site.upd.grp.mbrshp
 
-###################### Site lists
+###################### list of special sites to restore / exempt
 
 # Sometimes sites need to be listed explicitly by site id.  The site lists
 # always contain a dummy siteid so that there is at least one.  (See if you can
 # guess which one it is.)
 
-# Sites on this list will have their permissions restored from the archive table
-# specified elsewhere.  Remove sites on the list after they are processed so that
-# permissions aren't restored by accident in a future run.
+# While the sites are obtained from the yml file the lists of sites
+# are maintained in csv files. Those files are read at when the
+# generateBatchROSqlSite.pl script is run to create a one-time yml file
+# for the actual sql script creation.  The yml format is illustrated below
+# but the user won't need to explicitly add the lists to the yml file. 
 
-restoreSites:
-    - ImJustADummySiteIdStringHAHAYouCantFindMe
-    # - 44434bf9-1489-480f-96be-cd97387bd9e4
+# Sites on the restoreSites list will have their permissions restored
+# from the archive table specified elsewhere.  Remove sites on the
+# list after they are processed so that permissions aren't restored by
+# accident in a future run.
 
+# restoreSites:
+#     - ImJustADummySiteIdStringHAHAYouCantFindMe
 
-# Sites on the excluded list will not be made read-only.  If there are
+# Sites on the list of excluded sites will not be made read-only.  If there are
 # multiple runs of the script verify that the right sites continue to
 # be on the list.  Some administrative sites should always be listed.
 # E.g. the gateway admin site.  The list must have at least one entry
 # so a dummy site should be included.
 
-# The real site ids are taken from the excludeSites.csv file.
+# Sample excluded Sites entry.  The real site ids are read from the
+# exemptsites.csv file
+
 # excludedSites:
-#    - NOTMENOWAY
+#    - ImJustADummySiteIdStringHAHAYouCantFindMe
 
 #end
