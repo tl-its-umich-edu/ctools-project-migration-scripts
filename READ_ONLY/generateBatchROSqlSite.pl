@@ -1,35 +1,31 @@
 #!/usr/bin/env perl
+# Generate sql for CTools read only tasks.
 use YAML qw'LoadFile';
 use POSIX qw(strftime);
 use Data::Dumper;
 
-## REFACTOR sql generation to separate out the site list and key generation.
-## ALSO allow update action log as action.
-
 use strict;
 
-## Generate sql to remove / restore site permissions based on lists of sites, roles, and permissions
-## to delete.  Roles and permissions are configured in a yml file.  In production SQL will be run by a DBA.
+## Generate sql to remove / restore site permissions based on site types, lists of sites,
+## roles, and permissions to delete.  Roles and permissions are configured in
+## a yml file.  In production SQL will be run by a DBA.
 ## Tasks are given on the command line.  Available tasks are:
 ## READ_ONLY_LIST, READ_ONLY_UPDATE (list permissions to remove, remove them)
 ## READ_ONLY_RESTORE_LIST, READ_ONLY_RESTORE (list permissions to be restored, restore them)
-
-# This is based on generateROSqlSite.pl but will use sql to assemble the list of sites to change
+## ACTION_LOG_UPDATE, ACTION_LOG_LIST, ACTION_LOG_COUNT - list or insert action log entries.
+## This is based on generateROSqlSite.pl but will use sql to assemble the
+## list of sites to change
 # instead of expecting an explicit list of sites to be provided.  It will exclude sites based
 # on an explicit list.
-# - generate list of sites based on site type.
-# - exclude sites on an explicit list.
-# - run update in single transaction.
-# - Run action table update after the sites are updated.
 
 # Run this using the runBatchRO.sh shell script to deal with arguments and file naming.
 
-# NOTE: syntax to rename a table
-# rename SAKAI_REALM_RL_FN_20161215 to SAKAI_REALM_RL_FN_20161215_A
+# NOTE: oracle syntax to rename a table
+# "rename SAKAI_REALM_RL_FN_20161215 to SAKAI_REALM_RL_FN_20161215_A"
 
 ################
 ## global configuration values read from the configuration yml file.  See below for
-## purpose.
+## purposes.
 our $DB_USER;
 our $comma_break_rate;
 our $realms_max;
@@ -41,13 +37,11 @@ our @excludedSites;
 our @restoreSites;
 # list of site types to examine
 our @readonlySiteTypes;
-# name of the archive table, which may change over time.
+# name of the archive table, which will change over time.
 our $ARCHIVE_ROLE_FUNCTION_TABLE;
 # name of action log which may change for testing.
 our $ACTION_LOG_TABLE;
 ################
-
-#our $ACTION_LOG_TABLE="CPM_ACTION_LOG";
 
 # Read the requested task from the command line.  Wrapper shell script will default it if necessary.
 our $task = shift;
@@ -69,26 +63,17 @@ sub configure {
   # for contents of IN clause how often put in a line break when generate list.
   $comma_break_rate=$db->{comma_break_rate};
   
-  # how many realms to put in each separate query.
-  #  $realms_max=$db->{realms_max};
-  
   # functions (permissions) to delete.
   @functions = @{$db->{functions}};
   
   # roles to examine.
   @roles=@{$db->{roles}};
 
-#  print("db: 0\n");
-#  print Dumper($db);
-  
   # sites to exclude
   @excludedSites=@{$db->{excludedSites}};
 
     # sites to exclude
   @restoreSites=@{$db->{restoreSites}};
-
-#  print("restoreSites: 0\n");
-#  print Dumper(@restoreSites);
   
   # site types to include
   @readonlySiteTypes=@{$db->{siteTypes}};
@@ -106,11 +91,9 @@ sub configure {
   setupTask($task);
 }
 
-#excluded_ids
-
 ########################
 ## Variables to hold information that is used when generating SQL.
-# Name the action the sql should perform.  Can select, delete, insert depending on circumstances.
+# Name the action the sql should perform. Can select, delete, insert depending on circumstances.
 our($sqlAction);
 # permissions table that sql should read from.  It may be the current, active, table or
 # might be the archive table.
@@ -146,7 +129,6 @@ sub setupTask {
   if ($task =~ "ACTION_LOG_UPDATE") {
     ($sqlAction,$READ_TABLE)
       = ("INSERT INTO ${DB_USER}.${ACTION_LOG_TABLE}\n ",$ACTION_LOG_TABLE);
-#      = ("INSERT INTO ${DB_USER}.${ACTION_LOG_TABLE}\n\tSELECT * ",$ACTION_LOG_TABLE);
   }
 
   if ($task =~ "ACTION_LOG_LIST") {
@@ -166,7 +148,6 @@ sub setupTask {
       = ("DELETE ",$CURRENT_ROLE_FUNCTION_TABLE);
   }
 
-  
   # list what would be removed from the table
   if ($task eq "READ_ONLY_LIST") {
     ($sqlAction,$READ_TABLE)
@@ -196,7 +177,6 @@ sub writeActionLog {
   my($task,$siteId) = @_;
   print "/****** update log table *******/\n";
   print "insert into ${DB_USER}.${ACTION_LOG_TABLE} VALUES(CURRENT_TIMESTAMP,'${siteId}','$task');\n";
-  # print "insert into ${DB_USER}.CPM_ACTION_LOG VALUES(CURRENT_TIMESTAMP,'${siteId}','$task');\n";
 }
 
 # sql to make an archive function table.
@@ -250,35 +230,24 @@ sub unionListSites {
 ############ assemble the sql query
 
 sub buildSql {
-#  my @realmIds = @_;
 
-#  print("restoreSites: A \n");
-#  print Dumper(@restoreSites);
-  
   my $roles_as_sql = commaList(@roles);
   my $role_keys = role_keys_sql($roles_as_sql);
 
   my $functions_as_sql = commaList(@functions);
   my $function_keys = function_keys_sql($functions_as_sql);
 
-  #print("restoreSites: B \n");
-#  print Dumper(@restoreSites);
   my $excluded_sites_as_sql = unionListSites(@excludedSites);
   my $excluded_sites = excluded_sites_sql($excluded_sites_as_sql);
 
-  #print("restoreSites: C \n");
-#  print Dumper(@restoreSites);
   my $site_realm_keys = site_realm_key_sql();
   
   # types
   my $candidate_site_as_sql = commaList(@readonlySiteTypes);
   my $candidate_sites = candidate_site_sql($candidate_site_as_sql);
- # print("restoreSites: D\n");
-#  print Dumper(@restoreSites);
+
   my $target_sites = target_site_id_sql();
 
-#  print("restoreSites: \n");
-#  print Dumper(@restoreSites);
   my $target_sites_explicit_as_sql = unionListSites(@restoreSites);
   my $target_sites_explicit = target_site_id_explicit_sql($target_sites_explicit_as_sql);
 
@@ -286,7 +255,6 @@ sub buildSql {
   my $suffix = suffix_sql($task);
 
   print "\n";
-  #  printComment("update permissions");
   print "${prefix}\n";
 
   # sql to generate sites to target.
@@ -310,7 +278,7 @@ sub buildSql {
   }
   
   print "${suffix}\n";
-  if ($task eq "ACTION_LOG_LIST" || $task eq "ACTION_LOG_COUNT" || $task eq "ACTION_LOG_UPDATE.XXX" ) {
+  if ($task eq "ACTION_LOG_LIST" || $task eq "ACTION_LOG_COUNT") {
     print ")\n";
   }
   print ";\n";
@@ -335,7 +303,6 @@ sub formatSiteId {
 sub prefix_sql {
   # there might not be an action.
   my $task = shift;
-  printComment("prefix_sql: task: [$task]");
 
   if ($task eq "READ_ONLY_LIST") {
     return prefix_SQL_READ_ONLY_LIST();
@@ -363,8 +330,6 @@ sub prefix_sql {
     $USE_TABLE=$CURRENT_ROLE_FUNCTION_TABLE;
   }
 
-    
-#     FROM   ${DB_USER}.${ARCHIVE_ROLE_FUNCTION_TABLE} SRRF
   my $sql = <<"PREFIX_SQL";
    ${sqlAction}
    FROM   ${DB_USER}.${USE_TABLE} SRRF
@@ -376,43 +341,23 @@ PREFIX_SQL
   $sql
 }
 
-# # sql for the start of query.
-# sub prefix_sql_old {
-#   printComment("take action");
-#   my $sql = <<"PREFIX_SQL";
-#    ${sqlAction}
-#    FROM   ${DB_USER}.${READ_TABLE} SRRF
-#    WHERE  EXISTS (
-#    WITH 
-# PREFIX_SQL
-#   $sql
-# }
-
-
 sub prefix_SQL_READ_ONLY_LIST {
-  printComment("take action read only list");
   "WITH ";
 }
 
 sub prefix_SQL_ACTION_LOG_UPDATE {
-  printComment("take action: action log update");
   "INSERT INTO ${DB_USER}.${ACTION_LOG_TABLE}(ACTION_TIME,SITE_ID,ACTION_TAKEN) \nWITH";
-  # "INSERT INTO ${DB_USER}.CPM_ACTION_LOG_TEST(ACTION_TIME,SITE_ID,ACTION_TAKEN) \nWITH";
-#  "WITH ";
 }
 
 sub prefix_SQL_ACTION_LOG_LIST {
-  printComment("take action: action log list");
-  "select *   FROM ( \nWITH";
+  "SELECT *   FROM ( \nWITH";
 }
 
 sub prefix_SQL_ACTION_LOG_COUNT {
-  printComment("take action: action log count");
-  "select count(*)   FROM ( \nWITH";
+  "SELECT COUNT(*)   FROM ( \nWITH";
 }
 
 sub prefix_SQL_READ_ONLY_RESTORE {
-  printComment("take action: read only restore");
    "INSERT INTO ${DB_USER}.sakai_realm_rl_fn 
    SELECT * 
    FROM   ${DB_USER}.${ARCHIVE_ROLE_FUNCTION_TABLE} SRRF 
@@ -493,7 +438,6 @@ SITE_REALM_KEY_SQL
   $sql
 }
 
-
 sub filtered_realms_sql {
   my $sql = <<"REALM_KEY_SQL";
   SELECT * FROM target_site_ids WHERE target_site_ids.SITE_ID NOT IN (SELECT SID FROM excluded_ids)
@@ -525,48 +469,18 @@ TARGET_SITE_ID_EXPLICIT_SQL
  $sql
 }
 
-# sub target_sites_id_explicit_sql{
-#   my $sites_sql = shift;
-#   return "     target_site_id
-#        AS (
-# ${sites_sql}
-# )";
-# }
-
-# sub site_realm_key_sql{
-#   my $sql = <<"SITE_REALM_KEY_SQL";
-#       -- get the corresponding realm keys
-#        site_realm_keys 
-#         AS (
-#            SELECT ${DB_USER}.sakai_realm.realm_key
-#            FROM ${DB_USER}.sakai_realm,site_realm_ids
-#            WHERE ${DB_USER}.sakai_realm.realm_id = site_realm_id.realm_id
-#        )
-# SITE_REALM_KEY_SQL
-# $sql
-# }
-
 # sql that uses the sub-tables to generate list of grants matching the
 # role, function, realm criteria
 sub suffix_sql {
   my $task = shift;
   my $UPDATE_DELIMITER="";
-  # there might not be an action.
-
-  printComment("suffix_sql task: [$task]");
 
   if ($task eq "READ_ONLY_LIST") {
     return " select * from target_site_id ";
   }
 
-  # if ($task eq "ACTION_LOG_UPDATE") {
-  #   print("found task ACTION_LOG_UPDATE\n");
-  #   $task = "READ_ONLY_UPDATE";
-  # }
-  
   if ($task =~ /ACTION_LOG_.*/i) {
      $task = "READ_ONLY_UPDATE" if ($task eq "ACTION_LOG_UPDATE");
-#    print("matched ACTION_LOG\n");
       return "select CURRENT_TIMESTAMP AS ACTION_TIME, SITE_ID AS SITE_ID, '${task}' AS ACTION_TAKEN from dual,target_site_id ";
   }
 
@@ -603,110 +517,26 @@ sub printComment {
 sub printPermissionsCount {
   my $msg = shift;
   printComment($msg);
-  print "select count(*) from ${DB_USER}.SAKAI_REALM_RL_FN;\n\n";
+  print "SELECT COUNT(*) FROM ${DB_USER}.SAKAI_REALM_RL_FN;\n\n";
 }
 
-### utilities to manage input / output
-
-sub parseSiteLine {
-  $_ = shift;
-
-  # skip empty lines and comments
-  return if (/^\s*$/);
-  return if (/^\s*#/);
-  split(' ',$_);
-}
-
-# print site sql if there are any sites.
-sub printForSites {
-  my $task = shift;
-  my @realmIds = @_;
-  return if ((scalar @realmIds) == 0);
-  buildSql(@realmIds);
-}
-
-##### Driver reads site ids from stdin #######
-
-# read list of site ids from stdin and output sql update script.
-# Will limit number of site ids in a single query to a maximum number,
-# so there may be multiple queries.
-sub readFromStdin {
-  
-  # make a backup table.
-  writeRRFTableBackupSql($task) if ($task eq "READ_ONLY_UPDATE");
-
-  printPermissionsCount("initial count");
-
-  my @realmIds = ();
-  
-  while (<>) {
-
-    if ((scalar @realmIds) >= $realms_max) {
-      printForSites($task,@realmIds);
-      printPermissionsCount("updated so far");
-      @realmIds = ();
-    }
-    chomp;
-    my(@P) = parseSiteLine $_;
-    next unless(defined($P[0]));
-    writeActionLog($task,@P[0]) if ($task eq "READ_ONLY_UPDATE" || $task eq "READ_ONLY_RESTORE");
-    # add site id  to list of realms to process.
-    if ((scalar @P) == 1) {
-      push @realmIds,$P[0];
-    }
-  }
-  
-  # print any trailing sites
-  if ((scalar @realmIds) >= 0) {
-    printForSites($task,@realmIds);
-  }
-
-  printPermissionsCount("final count");
-}
-
-#### Don't read from stdin since generating site list
-#sub readFromStdin {
-
+# Run and generate sql based on the config file.
 sub runWithExcludedSites {
   
   # make a backup table.
   writeRRFTableBackupSql($task) if ($task eq "READ_ONLY_UPDATE");
 
   printPermissionsCount("initial count");
-
-  my @realmIds = ();
   
-#  while (<>) {
-
-#    if ((scalar @realmIds) >= $realms_max) {
-#      printForSites($task,@realmIds);
-#     printPermissionsCount("updated so far");
-#      @realmIds = ();
-#    }
-#    chomp;
-#    my(@P) = parseSiteLine $_;
-#    next unless(defined($P[0]));
-#    writeActionLog($task,@P[0]) if ($task eq "READ_ONLY_UPDATE" || $task eq "READ_ONLY_RESTORE");
-    # add site id  to list of realms to process.
-#    if ((scalar @P) == 1) {
-#      push @realmIds,$P[0];
-  #    }
   buildSql();
-#  }
   
-  # print any trailing sites
-#  if ((scalar @realmIds) >= 0) {
-#    printForSites($task,@realmIds);
-#  }
-
   printPermissionsCount("final count");
 }
-
 
 #### Invoke with configuration file and list of site ids.
 
 configure(@ARGV);
-#readFromStdin();
+
 runWithExcludedSites();
 #end
 

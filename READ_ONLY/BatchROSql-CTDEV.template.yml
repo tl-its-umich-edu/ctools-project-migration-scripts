@@ -100,18 +100,6 @@ functions:
 # always contain a dummy siteid so that there is at least one.  (See if you can
 # guess which one it is.)
 
-# Sites on the excluded list will not be made read-only.  If there are
-# multiple runs of the script verify that the right sites continue to
-# be on the list.  Some administrative sites should always be listed.
-# E.g. the gateway admin site.  The list must have at least one entry
-# so a dummy site has been included.
-
-excludedSites:
-    - ImJustADummySiteIdStringHAHAYouCantFindMe
-#     - 2003-mkt
-#     - 2003-3-A-MAP-05
-#     - gatewayadmin
-
 # Sites on this list will have their permissions restored from the archive table
 # specified elsewhere.  Remove sites on the list after they are processed so that
 # permissions aren't restored by accident in a future run.
@@ -119,5 +107,16 @@ excludedSites:
 restoreSites:
     - ImJustADummySiteIdStringHAHAYouCantFindMe
     # - 44434bf9-1489-480f-96be-cd97387bd9e4
+
+
+# Sites on the excluded list will not be made read-only.  If there are
+# multiple runs of the script verify that the right sites continue to
+# be on the list.  Some administrative sites should always be listed.
+# E.g. the gateway admin site.  The list must have at least one entry
+# so a dummy site should be included.
+
+# The real site ids are taken from the excludeSites.csv file.
+# excludedSites:
+#    - NOTMENOWAY
 
 #end
