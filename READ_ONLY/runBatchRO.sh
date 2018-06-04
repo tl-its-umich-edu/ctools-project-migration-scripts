@@ -98,6 +98,7 @@ fi
 # do final checking.
 shopt -s nocasematch
 
+# extract the task
 TASK=$1
 
 if [[ $TASK =~ "READ_ONLY_" ]];
@@ -111,6 +112,7 @@ else
     exit 1;
 fi
 
+# extract the config file
 CONFIG=$2
 
 if [ ! -e "${CONFIG}" ]; then
@@ -127,8 +129,9 @@ NEW_CONFIG=${CONFIG}.${T}.yml
 echo -e "# Read only config file generated automatically from ${CONFIG} at ${T}\n" >| ${NEW_CONFIG}
 cat ${CONFIG} >> ${NEW_CONFIG}
 
-# Append a 1 column list of exempt or restore site ids to the new, one
-# time, config file in key / values yaml format.
+# Get explicit lists of site ids from csv files and append them, in
+# yaml format, to the new, one time, config file in key / values yaml
+# format.
 
 # For excluded sites either file name will work.
 appendListToNewConfig excludedsites.csv excludedSites ${NEW_CONFIG}
