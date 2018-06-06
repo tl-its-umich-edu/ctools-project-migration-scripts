@@ -1,0 +1,8 @@
+# List of sites to which should not be made read-only.  Values in the
+# first column will be used as the site id.  Rows starting with a #
+# will be ignored.
+#
+# This should always contain at least one site id.  It can be an arbitrary string.
+ImJustADummySiteIdStringHAHAYouCantFindMe
+#end
+

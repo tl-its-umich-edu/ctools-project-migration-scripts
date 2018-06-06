@@ -1,38 +1,185 @@
-# CPM Tools
+# CPM Batch SQL Tools
 
-This directory contains tools to help with the CPM migration.  They
-will generate SQL for various tasks.  That SQL then needs to be run by
-a DBA.
+This project contains tools to generate SQL to help with the CPM
+migration.  That SQL then needs to be run by a DBA.
+
+This version of the CPM Tools is designed for batch sql processing.
+If sites need to be made read-only based on site id see the older,
+non-batch, versions available in the TARS directory.
 
 Note: These scripts will not run on Windows. They will run on OSX and should
 run on Linux.
 
 # Obtaining the CPM tools
 
-Both tools are contained in a single tar file in the GitHub CPM repository
-https://github.com/tl-its-umich-edu/ctools-project-migration.git They
-are in the directory: src/sql/READ_ONLY.  The most recent build can be
-downloaded from the TARS directory. The appropriate tar file starts with
-CPMTools and also specifies a build date.
+The tools are distributed in a single tar file in the GitHub CPM
+repository
+https://github.com/tl-its-umich-edu/ctools-project-migration.git The
+most recent build of the tools can be downloaded from the TARS
+directory. The appropriate tar file starts with _BatchCPMTools_ and
+also contains a build timestamp.  The tools are packaged to be
+self-contained but they must be run on a Mac.  The source files can be
+found in the directory: src/sql/READ_ONLY but they are not required to
+run the tools.
 
-Let the tar file expand during download or double click to expand it.
-
-Open a terminal shell and go the directory created when expanded.
+To get the tools download the most recent BatchCPMTools tar file from
+the GitHub project TARS directory. Let the tar file expand during
+download or double click to expand it.  After the tar is expanded open
+a terminal shell and go the directory that was created.
 
 # The tools
 
 There are two tools available.
 
+     * runBatchRO.sh - generate SQL to make a site read-only.  This
+     generates the primary list of sites to make read-only by looking
+     at the site type.  It also accepts a list of explicit site ids
+     for sites that should not be made read-only.  It can also be used
+     to restore permissions to sites that were made read-only.  See
+     the README and the *.template.yml file for details of the
+     required configuration.
+
     * runVerifySiteAccessMembership.sh - Verify that can get the
      sitemembership via the CTools direct api and create sql to fixup
      membership problems if they are found.
-     * runRO.sh - generate SQL to make a site read-only.
 
-These are described separately below.
+These tools are described separately below.
+
+# Tool: Batch modification of CTools sites Read-Only status
+
+## Short version
+* Create a base yaml file by copying, renaming, and updating the template yaml
+file.
+* Update the "exemptsites.csv" and "restoresites.csv" files with
+relevant site ids.
+* Run *runAllTasks.sh <base config file name>* to generate all the sql
+files for this version of the config files.
+* Give a DBA only the files for the tasks you need done and have them
+  run them in a single transaction.
+
+## Detailed version
+
+The read-only tool writes SQL queries to make sites read only or to
+reverse the read only status of a site.  This requires generating
+queries to remove permissions, restore permissions. In addition
+queries can be created to record the actions that are taken.  and to
+document actions.  Each type of action has also varients that show
+and/or count the sites that will be affected.  Those varients are
+helpful for sanity checking that a SQL query that modifies the
+database will affect the right sites.
+
+*remove permissions:*
+READ\_ONLY\_LIST,
+READ\_ONLY\_UPDATE
+
+*action documentation queries:*
+ACTION\_LOG\_COUNT,
+ACTION\_LOG\_LIST,
+ACTION\_LOG\_UPDATE
+
+*restoration queries:*
+READ\_ONLY\_RESTORE\_LIST,
+READ\_ONLY\_RESTORE,
+
+## Configuration of read-only script
+
+The same script is used to generate SQL for all these actions.  The
+script is invoked with the name of the action required and a yaml
+configuration file giving additional details.  Those details usually
+don't change from run to run.  The script also consumes lists of
+specific site ids listing sites that should *not* be made read only or
+sites that should have their permissions restored.  Those lists are
+likely to change so they are maintained in other files:
+exemptsites.csv and restoresites.csv.  Both files should have at least
+one entry which can be a dummy site id.
+
+Each time the script is run it automatically creates a combined
+configuration file with melds the general configuration file with the
+csv files to generate a one-time yaml configuration file with a unique
+name. If desired preserving these files can provide a history of the
+changes requested to sites.  Those one-time configuration files should
+not be modified by hand.  Make any required changes to the input yml and
+csv files and rerun the whole script.
+
+File templates are provided for each input file type in files ending
+with *.TEMPLATE* Those files contain additional documentation.
+
+## Documenting site changes
+
+To document the change history the *CPM\_ACTION\_LOG* table has been
+added to CTools.  The read-only script generates SQL to be used update
+that table with appropriate site id / action / time values so site
+status changes can be tracked.  Because the list of sites to make
+read-only is generated by a search the documentation sql queries must be run before
+the update is done.  This means the  time stamp recored will be slightly before the
+actual change is done. No extra configuration is required for the
+logging sql.
+
+## Making sites read-only
+
+The list of sites from which to remove permissions is generated by
+looking for sites with specific types. The list of site types, the
+list of user roles, and the list of permissions to remove are found in
+the yaml configuration file.  Sometimes specific sites should not be
+modified even if they are of a requested site type.  The script will look in
+the file *exemptsites.csv* for a list of those sites.
+
+## Restoring permissions to read-only sites
+Two pieces of information needs to be provided when restoring site
+permissions.
+
+* The list of site ids that should have permissions restored.
+* The name of the archive table from which to restore permissions.
+
+In order to restore permissions the original permissions need to be
+recorded.  The READ\_ONLY\_UPDATE sql script will create a new copy of
+the current permissions table (with a date stamp added to the name).
+There are likely to be multiple backups so, if a site it to be restored, it is
+critical to chose the appropriate archive table.  This must be done
+explicitly by setting the value of ARCHIVE\_ROLE\_FUNCTION\_TABLE
+in the base configuration yml file.
+
+## Generating sql queries
+Run the following script to generate an sql query.
+
+    ./runBatchRO.sh <task>  <base configuration file name>
+
+The output sql will automatically be put in the file:
+
+    <generated configuration file name>.<task>.sql
+
+Arguments:
+
+* task: Type of sql to generate.  See above for the list of possible
+  tasks.
+
+* base configuration file name: This must be explicitly specified.
+Typically the only change required in this file after initial setup
+would be setting the archive table name for a restore, but see the
+section *configuration of read-only script* above for some important
+details.
+
+While the sql scripts can be generated individually is often useful to
+generate all the scripts for a particular configuration at the same
+time and delete the ones you won't need.  You will seldom want only
+one script if you are making a change. The script *runAllTasks.sh* is
+provided for that purpose.
+
+## Running the output SQL
+
+When doing an update be sure to generate and run both the action log
+and permissions update sql.  Have a DBA run the resulting action log
+update and permissions update sql in that order and in the same
+transaction.  After the changes are commited the results can be seen
+CTools immediately by having a CTools admin reset the memory caches
+from the memory Ctools admin site.
 
 # Tool: Verifying sites have useable membership lists
 
-## script setup
+This is a legacy tool.  It is included unchanged from the prior
+version of the tools.
+
+## Configuration of verification script
 
 The verifyAccessSiteMembership.sh script requires an input file of
 site ids (one per line, # comments and empty lines are ignored).
@@ -49,9 +196,11 @@ Google sheets.  Do *NOT* use MS excel.
 
 In case of a need to restore membership in a site a copy of the
 *sakai\_realm\_rl\_gr* should be made in the database for each
-instance.  This need only be done once.
+instance.  This should be done at least once but does not need to be
+every single time the script is run.  Ask a DBA for help making this
+copy. 
 
-## script execution
+## Script execution
 
     ./runVerifyAccessSiteMembership.sh <site id list file name>
 
@@ -76,62 +225,16 @@ the memory Ctools admin site.
 The SQL may not work in some exceptional cases.
 Case by case solutions may be required for some sites.
 
-# Tool: Making CTools sites Read Only
-
-## script setup
-
-This script requires setting a file of site ids (one per line, # comments and
-empty lines are ignored) and a configuration file.  Configuration
-files are provided for each CTools instance.  The default is for a
-file confgured for production CTools.
-
-It is possible to restore permissions after a read-only operation.
-The read-only sql automatically makes a back up copy of the role
-function table with a name that includes the date when the sql was
-generated.  If a restore is required modify the appropriate yml file
-so that the 
-ARCHIVE\_ROLE\_FUNCTION\_TABLE contains the name of the
-appropriate archive table, one that contains the permissions to
-be restored.  This value can only be determined by the person doing
-the restore.
-
-## script execution
-Run the script as:
-
-    ./runRO.sh <task> <site id file name> {optional configuration file name}
-
-The output sql will automatically be put in the file:
-
-    <site id file name>.<task>.sql
-
-Arguments:
-
-* &lt;task>: Type of sql to generate.  The possible tasks are:
-READ\_ONLY\_UPDATE, READ\_ONLY\_LIST, READ\_ONLY\_RESTORE, and
-READ\_ONLY\_RESTORE\_LIST. The UPDATE tasks deal with removing
-permissions.  The second two deal with restoring permissions from an
-archive table.
-
-* &lt;site id file name>
-
-* {optional configuration file name}  This defaults to a configuration
-  for the production instance.  The only changes required for this
-  file would be for the archive table name.
-
-## Running the output SQL
-
-Have a DBA run and commit the resulting sql. To see the effect of the
-results immediately a CTools admin should reset the memory caches from
-the memory Ctools admin site.
-
 # Developers only: Modifying and Releasing the scripts
 
 Developers should use the ./buildCPMTools.sh scripts to package up the
-perl script into a 'packed' script that can be distributed. The build
-will also package all the required files into a tar file for
-distribution.  That file should be checked into the TARS directory and
-then pushed to the git repository.
+perl script and associated files into a distribution tar.  That file
+should be checked into the TARS directory and then pushed to the git
+repository so users can find it easily.
 
-NOTE: Developers will need to have some CPAN packages installed to do
-a build.  These will include FatPacker and YAML packages.  There may be
-others as well.
+NOTE: Developers will need to have a couple of tools installed to do
+the packaging.  In addition to having Perl installed the build script
+will require the CPAN Perl packages for YAML and FatPacker.  The
+Python module *markdown* must also be installed.  This is available via
+pip.
+

@@ -73,6 +73,13 @@ function appendListToNewConfig {
     } >> ${CONFIG_FILE}
 }
 
+function requireFile {
+    if [ ! -e "${1}" ]; then
+        echo "File: $1 must exist"
+        exit 1;
+    fi
+}
+
 ########### generate nice time stamp
 function niceTimestamp {
     echo $(date +"%F-%H-%M")
@@ -115,10 +122,9 @@ fi
 # extract the config file
 CONFIG=$2
 
-if [ ! -e "${CONFIG}" ]; then
-    echo "$0: ERROR: config file ${CONFIG} does not exist.";
-    exit 1;
-fi
+requireFile "${CONFIG}"
+requireFile "exemptsites.csv"
+requireFile "restoresites.csv"
 
 T=$(niceTimestamp)
 

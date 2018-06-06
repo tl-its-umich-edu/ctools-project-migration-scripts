@@ -526,11 +526,11 @@ sub runWithExcludedSites {
   # make a backup table.
   writeRRFTableBackupSql($task) if ($task eq "READ_ONLY_UPDATE");
 
-  printPermissionsCount("initial count");
+  printPermissionsCount("initial count") if ($task =~ /UPDATE$/ or $task =~ /RESTORE$/);
   
   buildSql();
   
-  printPermissionsCount("final count");
+  printPermissionsCount("final count") if ($task =~ /UPDATE$/ or $task =~ /RESTORE$/);
 }
 
 #### Invoke with configuration file and list of site ids.
