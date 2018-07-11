@@ -1,0 +1,139 @@
+# Configuration file for generating SQL to REMOVE/RESTORE permissions
+# from specific sites / roles.  Copy and rename the template file
+# version to specialize it for a specific CTools instance.
+
+# The file format is yaml. Note that yaml is sensitive to
+# indentation. Lines whose first non-whitespace character is a '#' are
+# ignored.
+
+# Sites to be make read-only are chosen by site type.  Specific sites
+# to exempt from the read-only change can be listed below.  Specific
+# sites to be restored need to have their site ids listed below.
+# Important details on this is given later in the file.
+
+#########
+
+# This is the table prefix for the SQL queries.  It will vary by
+# database instance.  Uncomment only one value.
+
+#db_user: CTDEV_USER
+#db_user: CTQA_USER
+#db_user: CTOOLS_USER
+
+########## These next 3 values are unlikely to change. #########
+# Put in a line break for comma separated lists in IN clause every this many entries.
+comma_break_rate: 5
+# Maximum number of realms to add to each query (obsolete)
+realms_max: 20
+# Table used for logging actions taken.  Unlikely to change except when testing.
+ACTION_LOG_TABLE: cpm_action_log
+##########
+
+
+#################################################
+
+# Name of role / function archive table to be used for restoring
+# permissions.  This value needs to be set each time a restoriation is
+# done.  There may be multiple backup tables and someone needs to
+# indentify the correct one.  The table name format is
+# 'sakai_realm_rl_fn_' with the date of table creation appended.  SQL
+# to generate a date specific backup table is created automatically
+# along with the read only sql.
+
+ARCHIVE_ROLE_FUNCTION_TABLE: sakai_realm_rl_fn_<DATESTAMP>
+
+############### Read only specification ##############
+# The roles and permissions listed here are very unlikely to change.  The
+# siteType list might be adjusted to only do a subset of the types for
+# a particular run.
+############# Readonly site types
+# These site types will be made read-only.
+siteTypes:
+    - specialized_projects
+    - project
+    - course
+
+############# Roles to make read-only.
+# These roles will have the permissions removed in all listed sites.
+roles:
+    - Member
+    - Observer
+    - Organizer
+    - Owner
+    - Affiliate 
+    - Assistant 
+    - Instructor 
+    - Librarian 
+    - Student 
+    - access 
+    - maintain
+
+############# Permissions to remove.
+# These functions/permissions will be REMOVED from requested roles in requested sites.
+functions:
+    - annc.delete.any
+    - annc.delete.own
+    - annc.new
+    - annc.revise.any
+    - annc.revise.own
+    - calendar.delete.any
+    - calendar.delete.own
+    - calendar.import
+    - calendar.new
+    - calendar.revise.any
+    - calendar.revise.own
+    - chat.delete.any
+    - chat.delete.channel
+    - chat.delete.own
+    - chat.new
+    - chat.new.channel
+    - content.delete.any
+    - content.delete.own
+    - content.hidden
+    - content.new
+    - content.revise.any
+    - content.revise.own
+    - content.all.groups
+    - dropbox.maintain
+    - mail.delete.any
+    - mail.new
+    - realm.del
+    - realm.upd
+    - realm.upd.own
+    - site.upd
+    - site.upd.site.mbrshp
+    - site.upd.grp.mbrshp
+
+###################### list of special sites to restore / exempt
+
+# Sometimes sites need to be listed explicitly by site id.  The site lists
+# always contain a dummy siteid so that there is at least one.  (See if you can
+# guess which one it is.)
+
+# While the sites are obtained from the yml file the lists of sites
+# are maintained in csv files. Those files are read at when the
+# generateBatchROSqlSite.pl script is run to create a one-time yml file
+# for the actual sql script creation.  The yml format is illustrated below
+# but the user doesn't need to explicitly add the lists to the yml file. 
+
+# Sites on the restoreSites list will have their permissions restored
+# from the archive table specified elsewhere.  Remove sites on the
+# list after they are processed so that permissions aren't restored by
+# accident in a future run.
+
+# restoreSites:
+#     - ImJustADummySiteIdStringHAHAYouCantFindMe
+
+# Sites on the list of excluded sites will not be made read-only.  If there are
+# multiple runs of the script verify that the right sites continue to
+# be on the list.  Some administrative sites should always be listed.
+# E.g. the gateway admin site.  The list must have at least one entry
+# so a dummy site should be included.
+
+# Sample excluded Sites entry.  The real site ids are read from the
+# exemptsites.csv file
+
+# excludedSites:
+#    - ImJustADummySiteIdStringHAHAYouCantFindMe
+
+#end
