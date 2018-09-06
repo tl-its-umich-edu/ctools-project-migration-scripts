@@ -232,27 +232,27 @@ sub unionListSites {
 sub buildSql {
 
   my $roles_as_sql = commaList(@roles);
-  my $role_keys = role_keys_sql($roles_as_sql);
+  my $role_keys = role_keys_sql($roles_as_sql).strip();
 
   my $functions_as_sql = commaList(@functions);
-  my $function_keys = function_keys_sql($functions_as_sql);
+  my $function_keys = function_keys_sql($functions_as_sql).strip();
 
   my $excluded_sites_as_sql = unionListSites(@excludedSites);
-  my $excluded_sites = excluded_sites_sql($excluded_sites_as_sql);
+  my $excluded_sites = excluded_sites_sql($excluded_sites_as_sql).strip();
 
   my $site_realm_keys = site_realm_key_sql();
   
   # types
   my $candidate_site_as_sql = commaList(@readonlySiteTypes);
-  my $candidate_sites = candidate_site_sql($candidate_site_as_sql);
+  my $candidate_sites = candidate_site_sql($candidate_site_as_sql).strip();
 
   my $target_sites = target_site_id_sql();
 
   my $target_sites_explicit_as_sql = unionListSites(@restoreSites);
-  my $target_sites_explicit = target_site_id_explicit_sql($target_sites_explicit_as_sql);
+  my $target_sites_explicit = target_site_id_explicit_sql($target_sites_explicit_as_sql).strip();
 
-  my $prefix = prefix_sql($task);
-  my $suffix = suffix_sql($task);
+  my $prefix = prefix_sql($task).strip();
+  my $suffix = suffix_sql($task).strip();
 
   print "\n";
   print "${prefix}\n";
@@ -277,9 +277,9 @@ sub buildSql {
     print "${site_realm_keys}\n";
   }
   
-  print "${suffix}\n";
+  print "${suffix}";
   if ($task eq "ACTION_LOG_LIST" || $task eq "ACTION_LOG_COUNT") {
-    print ")\n";
+    print ")";
   }
   print ";\n";
 

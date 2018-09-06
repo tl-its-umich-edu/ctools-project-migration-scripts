@@ -30,11 +30,14 @@ function build_tar {
 
     # copy over the RO script configuration files
     cp runRO.sh ${BUILD_DIR}
+    cp runBatchRO.sh ${BUILD_DIR}
+    cp runAllTasks.sh ${BUILD_DIR}
+
     cp ROSql-*yml ${BUILD_DIR}
 
     # copy the common files and the packed files.
     cp README.md ${BUILD_DIR}
-    cp README.html ${BUILD_DIR}
+
     cp *packed ${BUILD_DIR}
     
     chmod +x ${BUILD_DIR}/*packed ${BUILD_DIR}/*.sh
@@ -65,6 +68,8 @@ function pack_script {
 echo "+++ Please ignore error messages about 'pod' files."
 
 pack_script generateROSqlSite.pl
+pack_script generateBatchROSqlSite.pl
+
 pack_script verifyAccessSiteMembership.pl
 
 build_tar

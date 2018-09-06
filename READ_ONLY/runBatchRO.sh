@@ -49,8 +49,8 @@ The possible Read Only tasks are:
     is only accurate if it is run before the actual site update query is run.
 
 Each sql query will be put in a file named in the following format:
-   <configuration file name>.<time stamp>.<task>.sql
-For example: BatchROSql-CTDEV.specialized_projects.yml.2018-05-31-15-27.ACTION_LOG_COUNT.sql
+   <task>.<time stamp>.<configuration file name>.sql
+For example: ACTION_LOG_COUNT.2018-05-31-15-27.BatchROSql-CTDEV.specialized_projects.yml.sql
 EOF
          )
 
@@ -129,8 +129,8 @@ requireFile "restoresites.csv"
 T=$(niceTimestamp)
 
 ############### Write an updated config file appending the sites to be excluded.
-
-NEW_CONFIG=${CONFIG}.${T}.yml
+CONFIG_T=${CONFIG}.${T}
+NEW_CONFIG=${CONFIG_T}.yml
 
 echo -e "# Read only config file generated automatically from ${CONFIG} at ${T}\n" >| ${NEW_CONFIG}
 cat ${CONFIG} >> ${NEW_CONFIG}
@@ -146,7 +146,7 @@ appendListToNewConfig exemptsites.csv excludedSites ${NEW_CONFIG}
 appendListToNewConfig restoresites.csv restoreSites ${NEW_CONFIG}
 
 # Now run the sql generation script.
-echo "running: ${SCRIPT} ${TASK} ${NEW_CONFIG} >| ${NEW_CONFIG}.${TASK}.sql"
-${SCRIPT} ${TASK} ${NEW_CONFIG} >| ${NEW_CONFIG}.${TASK}.sql
+echo "running: ${SCRIPT} ${TASK} ${NEW_CONFIG} >| ${TASK}.${CONFIG_T}.sql"
+${SCRIPT} ${TASK} ${NEW_CONFIG} >| ${TASK}.".".${CONFIG_T}.sql
 
 #end

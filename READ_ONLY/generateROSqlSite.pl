@@ -163,16 +163,16 @@ sub buildSql {
   my @realmIds = @_;
   
   my $roles_as_sql = commaList(@roles);
-  my $rs = role_keys_sql($roles_as_sql);
+  my $rs = role_keys_sql($roles_as_sql).strip();
 
   my $functions_as_sql = commaList(@functions);
-  my $fs = function_keys_sql($functions_as_sql);
+  my $fs = function_keys_sql($functions_as_sql).strip();
 
   my $realms_as_sql = unionList(@realmIds);
-  my $rk = realm_keys_sql($realms_as_sql);
+  my $rk = realm_keys_sql($realms_as_sql).strip();
 
-  my $prefix = prefix_sql();
-  my $suffix = suffix_sql();
+  my $prefix = prefix_sql().strip();
+  my $suffix = suffix_sql().strip();
 
   print "\n";
 #  printComment("update permissions");

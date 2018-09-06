@@ -24,7 +24,7 @@ function help {
     echo "READ_ONLY_UPDATE will create sql to make site read only. It is the default."
     echo "READ_ONLY_RESTORE sql will restore the permissions removed from the site."
     echo "The _LIST tasks will print what would be changed, but does not do the change."
-    echo "The sql will be put in the file <site id file>.<task name>.sql"
+    echo "The sql will be put in the file <task name>.<site id file>sql"
 }
 
 ### time stamp utility
@@ -71,8 +71,8 @@ fi
 
 T=$(niceTimestamp)
 
-echo "running: cat $SITEIDS | ${SCRIPT} ${TASK} ${CONFIG} >| ${SITEIDS}.${T}.${TASK}.sql"
+echo "running: cat $SITEIDS | ${SCRIPT} ${TASK} ${CONFIG} >| ${TASK}.${T}.${SITEIDS}.sql"
 
-cat $SITEIDS | ${SCRIPT} ${TASK} ${CONFIG} >| ${SITEIDS}.${T}.${TASK}.sql
+cat $SITEIDS | ${SCRIPT} ${TASK} ${CONFIG} >| ${TASK}.${T}.${SITEIDS}.sql
 
 #end
