@@ -234,7 +234,21 @@ repository so users can find it easily.
 
 NOTE: Developers will need to have a couple of tools installed to do
 the packaging.  In addition to having Perl installed the build script
-will require the CPAN Perl packages for YAML and FatPacker.  The
-Python module *markdown* must also be installed.  This is available via
-pip.
+will require the CPAN Perl packages for YAML and FatPacker.  
+The Python module *markdown* must also be installed.  This is available via `pip install markdown`.
 
+It's easiest to use PerlBrew https://perlbrew.pl/ and install these
+
+`\curl -L https://install.perlbrew.pl | bash`
+
+Source the file as it mentions so it runs, then install a newer version of perl
+
+`perlbrew install perl-5.28.0`
+`perlbrew switch perl-5.28.0`
+`perlbrew install-cpanm`
+
+And the modules
+`perlbrew exec cpanm App::FatPacker YAML`
+
+Then you can run
+`perlbrew exec ./buildCPMTools.sh`
