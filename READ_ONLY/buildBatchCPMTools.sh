@@ -27,6 +27,7 @@ function build_tar {
 
     cp runVerifyAccessSiteMembership.sh ${BUILD_DIR}
     cp credentials.yml.TEMPLATE ${BUILD_DIR}
+    cp exemptsites.csv.TEMPLATE ${BUILD_DIR}
 
     # copy over the Batch RO script configuration files
     cp runBatchRO.sh ${BUILD_DIR}
