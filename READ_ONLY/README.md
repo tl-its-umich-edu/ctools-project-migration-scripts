@@ -1,4 +1,4 @@
-# CPM Batch SQL Tools
+l# CPM Batch SQL Tools
 
 This project contains tools to generate SQL to help with the CPM
 migration.  That SQL then needs to be run by a DBA.
@@ -227,7 +227,7 @@ Case by case solutions may be required for some sites.
 
 # Developers only: Modifying and Releasing the scripts
 
-Developers should use the ./buildCPMTools.sh scripts to package up the
+Developers should use the ./buildCPMTools.sh and ./buildBatchCPMTools.sh scripts to package up the
 perl script and associated files into a distribution tar.  That file
 should be checked into the TARS directory and then pushed to the git
 repository so users can find it easily.

@@ -28,18 +28,19 @@ function build_tar {
     cp runVerifyAccessSiteMembership.sh ${BUILD_DIR}
     cp credentials.yml.TEMPLATE ${BUILD_DIR}
 
-    # copy over the RO script configuration files
-    cp runRO.sh ${BUILD_DIR}
-    cp ROSql-*yml ${BUILD_DIR}
+    # copy over the Batch RO script configuration files
+    cp runBatchRO.sh ${BUILD_DIR}
+    cp runAllTasks.sh ${BUILD_DIR}
+
 
     # copy the common files and the packed files.
     cp README.md ${BUILD_DIR}
-    cp README.html ${BUILD_DIR}
+
     cp *packed ${BUILD_DIR}
     
     chmod +x ${BUILD_DIR}/*packed ${BUILD_DIR}/*.sh
     
-    TAR_OUT=${TAR_DIR}/CPMTools.${TS}.tar
+    TAR_OUT=${TAR_DIR}/BatchCPMTools.${TS}.tar
     echo "+++ Created ${TAR_OUT} for CPM site migration."
     tar -cf ${TAR_OUT} -C ${BUILD_DIR} .
     rm -rf ${BUILD_DIR}
@@ -64,7 +65,8 @@ function pack_script {
 
 echo "+++ Please ignore error messages about 'pod' files."
 
-pack_script generateROSqlSite.pl
+pack_script generateBatchROSqlSite.pl
+
 pack_script verifyAccessSiteMembership.pl
 
 build_tar
