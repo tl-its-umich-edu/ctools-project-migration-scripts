@@ -269,11 +269,11 @@ sub buildSql {
   if ($task !~ m|_RESTORE|) {
     print "${excluded_sites},\n";
     print "${candidate_sites},\n";
-    print "${target_sites}\n";
+    print "${target_sites}";
   }
   
   if ($task =~ m|_RESTORE|) {
-    print "${target_sites_explicit}\n";
+    print "${target_sites_explicit}";
   }
 
 
