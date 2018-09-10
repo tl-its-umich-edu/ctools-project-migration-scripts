@@ -147,6 +147,6 @@ appendListToNewConfig restoresites.csv restoreSites ${NEW_CONFIG}
 
 # Now run the sql generation script.
 echo "running: ${SCRIPT} ${TASK} ${NEW_CONFIG} >| ${TASK}.${CONFIG_T}.sql"
-${SCRIPT} ${TASK} ${NEW_CONFIG} >| ${TASK}.".".${CONFIG_T}.sql
+${SCRIPT} ${TASK} ${NEW_CONFIG} >| ${TASK}.${CONFIG_T}.sql
 
 #end
