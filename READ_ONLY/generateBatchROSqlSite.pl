@@ -232,27 +232,34 @@ sub unionListSites {
 sub buildSql {
 
   my $roles_as_sql = commaList(@roles);
-  my $role_keys = role_keys_sql($roles_as_sql).strip();
+  my $role_keys = role_keys_sql($roles_as_sql);
+  chomp ($role_keys);
 
   my $functions_as_sql = commaList(@functions);
-  my $function_keys = function_keys_sql($functions_as_sql).strip();
+  my $function_keys = function_keys_sql($functions_as_sql);
+  chomp ($function_keys);
 
   my $excluded_sites_as_sql = unionListSites(@excludedSites);
-  my $excluded_sites = excluded_sites_sql($excluded_sites_as_sql).strip();
+  my $excluded_sites = excluded_sites_sql($excluded_sites_as_sql);
+  chomp($excluded_sites);
 
   my $site_realm_keys = site_realm_key_sql();
   
   # types
   my $candidate_site_as_sql = commaList(@readonlySiteTypes);
-  my $candidate_sites = candidate_site_sql($candidate_site_as_sql).strip();
+  my $candidate_sites = candidate_site_sql($candidate_site_as_sql);
+  chomp($candidate_sites);
 
   my $target_sites = target_site_id_sql();
 
   my $target_sites_explicit_as_sql = unionListSites(@restoreSites);
-  my $target_sites_explicit = target_site_id_explicit_sql($target_sites_explicit_as_sql).strip();
+  my $target_sites_explicit = target_site_id_explicit_sql($target_sites_explicit_as_sql);
+  chomp($target_sites_explicit);
 
-  my $prefix = prefix_sql($task).strip();
-  my $suffix = suffix_sql($task).strip();
+  my $prefix = prefix_sql($task);
+  chomp($prefix);
+  my $suffix = suffix_sql($task);
+  chomp($suffix);
 
   print "\n";
   print "${prefix}\n";
