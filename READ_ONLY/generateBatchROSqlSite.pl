@@ -251,6 +251,7 @@ sub buildSql {
   chomp($candidate_sites);
 
   my $target_sites = target_site_id_sql();
+  chomp($target_sites);
 
   my $target_sites_explicit_as_sql = unionListSites(@restoreSites);
   my $target_sites_explicit = target_site_id_explicit_sql($target_sites_explicit_as_sql);
@@ -382,8 +383,7 @@ sub role_keys_sql {
         SELECT role_key AS role_key 
         FROM   ${DB_USER}.sakai_realm_role 
         WHERE  role_name IN (
-${role_as_sql}
-                             ))
+${role_as_sql}))
 END_ROLE_KEYS_SQL
   $sql
 }
@@ -397,8 +397,7 @@ sub function_keys_sql {
         SELECT function_key AS function_key
         FROM   ${DB_USER}.sakai_realm_function
         WHERE  function_name IN (
-${function_as_sql}
-                                 ))
+${function_as_sql}))
 FUNCTION_KEYS_SQL
   $sql
 }
@@ -413,8 +412,7 @@ sub candidate_site_sql {
             FROM
                   ${DB_USER}.sakai_site
             WHERE
-                ${DB_USER}.sakai_site.type IN ($candidate_site_as_sql)
-            )
+                ${DB_USER}.sakai_site.type IN ($candidate_site_as_sql))
 CANDIDATE_SITE_SQL
   $sql
 }
@@ -425,8 +423,7 @@ sub excluded_sites_sql {
   my $sql = <<"REALM_KEY_SQL";
      excluded_site_id 
        AS (
-       $excluded_sites_as_sql
-  )
+       $excluded_sites_as_sql)
 REALM_KEY_SQL
   $sql
 }
@@ -439,8 +436,7 @@ sub site_realm_key_sql {
        AS(
          SELECT ${DB_USER}.sakai_realm.realm_key
          FROM ${DB_USER}.sakai_realm,target_site_id
-         WHERE ${DB_USER}.sakai_realm.realm_id LIKE '%'||target_site_id.site_id||'%'
-  )
+         WHERE ${DB_USER}.sakai_realm.realm_id LIKE '%'||target_site_id.site_id||'%')
 SITE_REALM_KEY_SQL
   $sql
 }
@@ -459,8 +455,7 @@ sub target_site_id_sql{
           SELECT candidate_site_id.site_id FROM candidate_site_id
           LEFT OUTER JOIN excluded_site_id
           ON candidate_site_id.site_id = excluded_site_id.site_id
-          WHERE excluded_site_id.site_id is null
-           )           
+          WHERE excluded_site_id.site_id is null)           
 TARGET_SITE_ID_SQL
  $sql
 }
@@ -470,8 +465,7 @@ sub target_site_id_explicit_sql{
   my $sql = << "TARGET_SITE_ID_EXPLICIT_SQL";
      target_site_id
        AS (
-           ${sites_sql}
-           )           
+           ${sites_sql})           
 TARGET_SITE_ID_EXPLICIT_SQL
  $sql
 }
