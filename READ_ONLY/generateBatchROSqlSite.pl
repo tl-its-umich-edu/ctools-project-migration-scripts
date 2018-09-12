@@ -49,6 +49,10 @@ our $task = shift;
 # get configuration file name from command line
 our ($yml_file) = shift || "./ROSqlSite.yml";
 
+my $timeStamp = strftime '%Y%m%d', gmtime();
+
+my $TEMP_TABLE = "SAKAI_REALM_RL_FN_T_${timeStamp}";
+
 # read in configuration file and set values
 sub configure {
   my ($db,$functions,$sites) = LoadFile($yml_file);
@@ -140,14 +144,14 @@ sub setupTask {
     ($sqlAction,$READ_TABLE)
       = ("SELECT count(*) FROM (\n",$ACTION_LOG_TABLE);
   }
-  
+
   ## work with removing permissions.  Will use the current role function table.
   # take permissions out of role function table to make site read only
   if ($task eq "READ_ONLY_UPDATE") {
     ($sqlAction,$READ_TABLE)
       = ("DELETE ",$CURRENT_ROLE_FUNCTION_TABLE);
   }
-
+  
   # list what would be removed from the table
   if ($task eq "READ_ONLY_LIST") {
     ($sqlAction,$READ_TABLE)
@@ -181,7 +185,6 @@ sub writeActionLog {
 
 # sql to make an archive function table.
 sub writeRRFTableBackupSql {
-  my $timeStamp = strftime '%Y%m%d', gmtime();
   print "/****** make backup table ********/\n";
   print "/* script creation time and backup table id: $timeStamp */\n";
   print "create table ${DB_USER}.SAKAI_REALM_RL_FN_${timeStamp} as select * from ${DB_USER}.SAKAI_REALM_RL_FN;\n";
@@ -336,6 +339,7 @@ sub prefix_sql {
 
   if ($task eq "READ_ONLY_UPDATE") {
     $USE_TABLE=$CURRENT_ROLE_FUNCTION_TABLE;
+    return prefix_SQL_READ_ONLY_UPDATE();
   }
 
   my $sql = <<"PREFIX_SQL";
@@ -372,6 +376,11 @@ sub prefix_SQL_READ_ONLY_RESTORE {
    WHERE  EXISTS (
           SELECT 1 FROM (
            WITH ";
+}
+
+sub prefix_SQL_READ_ONLY_UPDATE {
+   "CREATE TABLE ${DB_USER}.${TEMP_TABLE} AS
+   SELECT * FROM (WITH";
 }
 
 # return the sql for the role keys sub-table
@@ -500,12 +509,6 @@ sub suffix_sql {
              AND SRRF_2.realm_key =  site_realm_key.realm_key
      -- name the table generate by the WITH
      ) SELECTED_KEYS
-     -- now select the rows to delete
-  WHERE SRRF.role_key = SELECTED_KEYS.role_key
-    AND SRRF.realm_key = SELECTED_KEYS.realm_key
-    AND SRRF.function_key = SELECTED_KEYS.function_key
- -- end exists
-)
 SUFFIX_SQL
   $sql
 }
@@ -521,6 +524,11 @@ sub printPermissionsCount {
   print "SELECT COUNT(*) FROM ${DB_USER}.SAKAI_REALM_RL_FN;\n\n";
 }
 
+sub deleteFromTempTable {
+    printComment("Run the deletion");
+    print "DELETE FROM ${DB_USER}.${READ_TABLE} WHERE (role_key, realm_key, function, key) in (SELECT role_key, realm_key, function_key from ${DB_USER}.${TEMP_TABLE});\n\n";
+}
+
 # Run and generate sql based on the config file.
 sub runWithExcludedSites {
   
@@ -531,7 +539,10 @@ sub runWithExcludedSites {
   
   buildSql();
   
+  deleteFromTempTable() if ($task eq "READ_ONLY_UPDATE");
+
   printPermissionsCount("final count") if ($task =~ /UPDATE$/ or $task =~ /RESTORE$/);
+
 }
 
 #### Invoke with configuration file and list of site ids.
