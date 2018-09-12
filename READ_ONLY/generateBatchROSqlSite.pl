@@ -292,7 +292,7 @@ sub buildSql {
   if ($task eq "ACTION_LOG_LIST" || $task eq "ACTION_LOG_COUNT") {
     print ")";
   }
-  print ";\n";
+  print ";\n\n";
 
 }
 
