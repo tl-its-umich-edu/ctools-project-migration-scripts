@@ -49,7 +49,7 @@ our $task = shift;
 # get configuration file name from command line
 our ($yml_file) = shift || "./ROSqlSite.yml";
 
-my $timeStamp = strftime '%Y%m%d', gmtime();
+my $timeStamp = strftime '%y%m%d%H', gmtime();
 
 my $TEMP_TABLE = "SAKAI_REALM_RL_FN_T_${timeStamp}";
 
