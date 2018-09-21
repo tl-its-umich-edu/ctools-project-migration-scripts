@@ -247,6 +247,7 @@ sub buildSql {
   chomp($excluded_sites);
 
   my $site_realm_keys = site_realm_key_sql();
+  chomp($site_realm_keys);
   
   # types
   my $candidate_site_as_sql = commaList(@readonlySiteTypes);
@@ -499,7 +500,6 @@ sub suffix_sql {
   }
   
   my $sql = <<"SUFFIX_SQL";
-
    -- list grant rows to act on.
     SELECT SRRF_2.*
           FROM   ${DB_USER}.${READ_TABLE} SRRF_2,
