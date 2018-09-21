@@ -526,7 +526,7 @@ sub printPermissionsCount {
 
 sub deleteFromTempTable {
     printComment("Run the deletion");
-    print "DELETE FROM ${DB_USER}.${READ_TABLE} WHERE (role_key, realm_key, function, key) in (SELECT role_key, realm_key, function_key from ${DB_USER}.${TEMP_TABLE});\n\n";
+    print "DELETE FROM ${DB_USER}.${READ_TABLE} WHERE (role_key, realm_key, function_key) in (SELECT role_key, realm_key, function_key from ${DB_USER}.${TEMP_TABLE});\n\n";
 }
 
 # Run and generate sql based on the config file.
